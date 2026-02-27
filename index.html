@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inbox Zero — LLM Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            gray: {
+              25: '#FCFCFD', 50: '#F9FAFB', 100: '#F2F4F7', 200: '#EAECF0',
+              300: '#D0D5DD', 400: '#98A2B3', 500: '#667085', 600: '#475467',
+              700: '#344054', 800: '#1D2939', 900: '#101828',
+            },
+            brand: {
+              50: '#F4F3FF', 100: '#EBE9FE', 200: '#D9D6FE', 300: '#BDB4FE',
+              500: '#7A5AF8', 600: '#6938EF', 700: '#5925DC', 800: '#4A1FB8',
+            },
+            success: { 50: '#ECFDF3', 500: '#12B76A', 700: '#027A48' },
+            warning: { 50: '#FFFAEB', 500: '#F79009', 700: '#B54708' },
+            error:   { 50: '#FEF3F2', 500: '#F04438', 700: '#B42318' },
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-feature-settings: 'cv11', 'ss01'; -webkit-font-smoothing: antialiased; }
+  </style>
+</head>
+<body class="bg-gray-25 text-gray-900 font-sans min-h-screen">
+
+  <!-- Header -->
+  <header class="border-b border-gray-200 bg-white">
+    <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-gray-900">Inbox Zero — AI Activity</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Email automation and cold email blocking metrics</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="last-updated" class="text-xs text-gray-400"></span>
+        <span id="status-dot" class="inline-block w-2 h-2 rounded-full bg-gray-300"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="cards">
+      <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+        <p class="text-sm font-medium text-gray-500">Rules Executed Today</p>
+        <p class="text-3xl font-semibold mt-1" id="card-rules-today">—</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+        <p class="text-sm font-medium text-gray-500">Cold Email Rules Today</p>
+        <p class="text-3xl font-semibold mt-1" id="card-cold-today">—</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+        <p class="text-sm font-medium text-gray-500">Learned Patterns</p>
+        <p class="text-3xl font-semibold mt-1" id="card-patterns">—</p>
+        <p class="text-xs text-gray-400 mt-0.5" id="card-patterns-detail"></p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
+        <p class="text-sm font-medium text-gray-500">Spam-Labeled Senders</p>
+        <p class="text-3xl font-semibold mt-1" id="card-spam-labels">—</p>
+      </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Rules by Day -->
+      <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-gray-900">Rules Executed by Day</h2>
+            <p class="text-sm text-gray-500">Stacked by rule type</p>
+          </div>
+        </div>
+        <div class="h-72"><canvas id="chart-rules-by-day"></canvas></div>
+      </div>
+
+      <!-- Cold Email Trend -->
+      <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-gray-900">Cold Email Rules vs Total</h2>
+            <p class="text-sm text-gray-500">Should trend down as patterns accumulate</p>
+          </div>
+        </div>
+        <div class="h-72"><canvas id="chart-cold-vs-total"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Pattern Growth -->
+      <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-gray-900">Pattern Growth</h2>
+            <p class="text-sm text-gray-500">Cumulative learned patterns by source</p>
+          </div>
+        </div>
+        <div class="h-72"><canvas id="chart-pattern-growth"></canvas></div>
+      </div>
+
+      <!-- Rules by Account -->
+      <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-gray-900">Activity by Account</h2>
+            <p class="text-sm text-gray-500">Rules executed per email account per day</p>
+          </div>
+        </div>
+        <div class="h-72"><canvas id="chart-by-account"></canvas></div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+
+    // Untitled UI–style palette
+    const PALETTE = [
+      '#7A5AF8', '#6938EF', '#F79009', '#12B76A', '#F04438',
+      '#0BA5EC', '#EE46BC', '#667085', '#4E5BA6', '#B54708',
+      '#D6BBFB', '#A6F4C5', '#FDB022', '#84CAFF', '#FDA29B',
+    ];
+
+    const charts = {};
+
+    // ── Fetch helper ──
+    async function fetchData(endpoint) {
+      const res = await fetch(`${API_BASE}/api/${endpoint}`);
+      const json = await res.json();
+      return json.data;
+    }
+
+    // ── Chart: Rules by Day (stacked bar) ──
+    async function renderRulesByDay() {
+      const rows = await fetchData('rules-by-day');
+      const days = [...new Set(rows.map(r => r.day))];
+      const types = [...new Set(rows.map(r => r.system_type))];
+
+      const datasets = types.map((type, i) => ({
+        label: type,
+        data: days.map(d => {
+          const match = rows.find(r => r.day === d && r.system_type === type);
+          return match ? match.cnt : 0;
+        }),
+        backgroundColor: PALETTE[i % PALETTE.length],
+        borderRadius: 2,
+      }));
+
+      if (charts.rulesByDay) charts.rulesByDay.destroy();
+      charts.rulesByDay = new Chart(document.getElementById('chart-rules-by-day'), {
+        type: 'bar',
+        data: { labels: days, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
+          },
+          scales: {
+            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { stacked: true, grid: { color: '#F2F4F7' }, ticks: { font: { size: 11 } } },
+          },
+        },
+      });
+    }
+
+    // ── Chart: Cold Email vs Total (line) ──
+    async function renderColdVsTotal() {
+      const rows = await fetchData('cold-email-checks-by-day');
+
+      if (charts.coldVsTotal) charts.coldVsTotal.destroy();
+      charts.coldVsTotal = new Chart(document.getElementById('chart-cold-vs-total'), {
+        type: 'line',
+        data: {
+          labels: rows.map(r => r.day),
+          datasets: [
+            {
+              label: 'Total Rules',
+              data: rows.map(r => r.total_rules),
+              borderColor: '#7A5AF8',
+              backgroundColor: 'rgba(122,90,248,0.08)',
+              fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2,
+            },
+            {
+              label: 'Cold Email Rules',
+              data: rows.map(r => r.cold_email_rules),
+              borderColor: '#F04438',
+              backgroundColor: 'rgba(240,68,56,0.08)',
+              fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: '#F2F4F7' }, beginAtZero: true, ticks: { font: { size: 11 } } },
+          },
+        },
+      });
+
+      // Update cards
+      const today = new Date().toISOString().slice(0, 10);
+      const todayRow = rows.find(r => r.day === today);
+      document.getElementById('card-rules-today').textContent = todayRow ? todayRow.total_rules : '0';
+      document.getElementById('card-cold-today').textContent = todayRow ? todayRow.cold_email_rules : '0';
+    }
+
+    // ── Chart: Pattern Growth (line, cumulative) ──
+    async function renderPatternGrowth() {
+      const rows = await fetchData('group-items');
+      const days = [...new Set(rows.map(r => r.day))];
+      const sources = [...new Set(rows.map(r => r.source))];
+
+      const sourceColors = { AI: '#7A5AF8', USER: '#0BA5EC', LABEL_ADDED: '#F79009', LABEL_REMOVED: '#667085' };
+
+      const datasets = sources.map(source => ({
+        label: source,
+        data: days.map(d => {
+          const match = rows.find(r => r.day === d && r.source === source);
+          return match ? match.cumulative : null;
+        }),
+        borderColor: sourceColors[source] || '#667085',
+        backgroundColor: 'transparent',
+        tension: 0.3, pointRadius: 3, borderWidth: 2, spanGaps: true,
+      }));
+
+      if (charts.patternGrowth) charts.patternGrowth.destroy();
+      charts.patternGrowth = new Chart(document.getElementById('chart-pattern-growth'), {
+        type: 'line',
+        data: { labels: days, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: '#F2F4F7' }, beginAtZero: true, ticks: { font: { size: 11 } } },
+          },
+        },
+      });
+
+      // Update cards
+      const totalPatterns = rows.reduce((max, r) => {
+        const val = r.cumulative || 0;
+        return val > max ? val : max;
+      }, 0);
+      const latestBySource = {};
+      for (const r of rows) {
+        if (!latestBySource[r.source] || r.day >= latestBySource[r.source].day) {
+          latestBySource[r.source] = r;
+        }
+      }
+      const totalAll = Object.values(latestBySource).reduce((s, r) => s + (r.cumulative || 0), 0);
+      document.getElementById('card-patterns').textContent = totalAll;
+      const breakdown = Object.entries(latestBySource).map(([s, r]) => `${s}: ${r.cumulative}`).join(', ');
+      document.getElementById('card-patterns-detail').textContent = breakdown;
+      document.getElementById('card-spam-labels').textContent = latestBySource['LABEL_ADDED']?.cumulative || '0';
+    }
+
+    // ── Chart: By Account (stacked bar) ──
+    async function renderByAccount() {
+      const rows = await fetchData('rules-by-account');
+      const days = [...new Set(rows.map(r => r.day))];
+      const emails = [...new Set(rows.map(r => r.email))];
+
+      // Aggregate: sum all rule types per email per day
+      const byDayEmail = {};
+      for (const r of rows) {
+        const key = `${r.day}|${r.email}`;
+        byDayEmail[key] = (byDayEmail[key] || 0) + r.cnt;
+      }
+
+      const datasets = emails.map((email, i) => ({
+        label: email,
+        data: days.map(d => byDayEmail[`${d}|${email}`] || 0),
+        backgroundColor: PALETTE[i % PALETTE.length],
+        borderRadius: 2,
+      }));
+
+      if (charts.byAccount) charts.byAccount.destroy();
+      charts.byAccount = new Chart(document.getElementById('chart-by-account'), {
+        type: 'bar',
+        data: { labels: days, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
+          },
+          scales: {
+            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { stacked: true, grid: { color: '#F2F4F7' }, ticks: { font: { size: 11 } } },
+          },
+        },
+      });
+    }
+
+    // ── Refresh all ──
+    async function refreshAll() {
+      const dot = document.getElementById('status-dot');
+      dot.className = 'inline-block w-2 h-2 rounded-full bg-warning-500 animate-pulse';
+
+      try {
+        await Promise.all([
+          renderRulesByDay(),
+          renderColdVsTotal(),
+          renderPatternGrowth(),
+          renderByAccount(),
+        ]);
+        dot.className = 'inline-block w-2 h-2 rounded-full bg-success-500';
+      } catch (e) {
+        console.error('Refresh failed:', e);
+        dot.className = 'inline-block w-2 h-2 rounded-full bg-error-500';
+      }
+
+      document.getElementById('last-updated').textContent =
+        `Updated ${new Date().toLocaleTimeString()}`;
+    }
+
+    // ── Init ──
+    refreshAll();
+    setInterval(refreshAll, REFRESH_MS);
+  </script>
+
+</body>
+</html>
