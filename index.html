@@ -133,21 +133,21 @@
     <!-- Redis AI Usage (actual cost from LLM provider billing) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="bg-white border border-gray-200 rounded-xl p-5 lg:col-span-2">
-        <h2 class="text-sm font-semibold text-gray-900">Actual AI Cost by Account</h2>
-        <p class="text-xs text-gray-500 mb-3">Real per-model cost tracked by Redis — not estimated</p>
+        <h2 class="text-sm font-semibold text-gray-900">Actual AI Cost by Account <span class="text-xs font-normal text-gray-400">(all-time)</span></h2>
+        <p class="text-xs text-gray-500 mb-3">Real per-model cost tracked by Redis — not affected by date filter</p>
         <div class="h-64"><canvas id="chart-redis-cost"></canvas></div>
       </div>
       <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">Token Usage & Cache Hits</h2>
-        <p class="text-xs text-gray-500 mb-3">Prompt caching saves ~40% on cached input tokens</p>
+        <h2 class="text-sm font-semibold text-gray-900">Token Usage & Cache Hits <span class="text-xs font-normal text-gray-400">(all-time)</span></h2>
+        <p class="text-xs text-gray-500 mb-3">Prompt caching saves ~40% on cached input tokens — not affected by date filter</p>
         <div class="h-64"><canvas id="chart-redis-tokens"></canvas></div>
       </div>
     </div>
 
     <!-- Redis usage detail table -->
     <div class="bg-white border border-gray-200 rounded-xl p-5">
-      <h2 class="text-sm font-semibold text-gray-900">AI Usage Detail (Redis)</h2>
-      <p class="text-xs text-gray-500 mb-3">All-time cumulative usage per email account from Redis tracking</p>
+      <h2 class="text-sm font-semibold text-gray-900">AI Usage Detail (Redis) <span class="text-xs font-normal text-gray-400">(all-time)</span></h2>
+      <p class="text-xs text-gray-500 mb-3">Cumulative usage per email account — not affected by date filter</p>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -168,8 +168,13 @@
       </div>
     </div>
 
-    <!-- Tier Migration -->
+    <!-- AI Efficiency -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white border border-gray-200 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-gray-900">AI Calls vs Pattern Matches</h2>
+        <p class="text-xs text-gray-500 mb-3">Absolute counts — pattern bar should grow</p>
+        <div class="h-64"><canvas id="chart-ai-vs-pattern"></canvas></div>
+      </div>
       <div class="bg-white border border-gray-200 rounded-xl p-5">
         <h2 class="text-sm font-semibold text-gray-900">Tier Migration by Category</h2>
         <p class="text-xs text-gray-500 mb-3">How much each rule type has moved from Tier 3 (AI, paid) to Tier 1 (pattern, free)</p>
@@ -177,77 +182,32 @@
       </div>
     </div>
 
-    <!-- Row 1: The headline charts -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-      <!-- LLM Calls Avoided % -->
-      <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">LLM Calls Avoided</h2>
-        <p class="text-xs text-gray-500 mb-3">% of rules matched by pattern instead of AI</p>
-        <div class="h-64"><canvas id="chart-efficiency"></canvas></div>
-      </div>
-
-      <!-- AI vs Pattern (stacked) -->
-      <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">AI Calls vs Pattern Matches</h2>
-        <p class="text-xs text-gray-500 mb-3">Absolute counts — pattern bar should grow</p>
-        <div class="h-64"><canvas id="chart-ai-vs-pattern"></canvas></div>
-      </div>
-    </div>
-
-    <!-- Row 2 -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-      <!-- Pattern Growth -->
-      <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">Pattern Growth</h2>
-        <p class="text-xs text-gray-500 mb-3">Cumulative learned patterns by source</p>
-        <div class="h-64"><canvas id="chart-pattern-growth"></canvas></div>
-      </div>
-
-      <!-- AI Calls by Rule Type -->
-      <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">AI Calls by Rule Type</h2>
-        <p class="text-xs text-gray-500 mb-3">Where LLM budget is spent — target the biggest bars</p>
-        <div class="h-64"><canvas id="chart-by-rule-type"></canvas></div>
-      </div>
-    </div>
-
-    <!-- Row 3: Cost -->
+    <!-- Cost -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      <!-- Estimated Daily Cost -->
       <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">Estimated Daily Cost</h2>
+        <h2 class="text-sm font-semibold text-gray-900">Est. Daily Cost</h2>
         <p class="text-xs text-gray-500 mb-3">~$0.014/call avg (Sonnet). Pattern matches = free</p>
         <div class="h-64"><canvas id="chart-daily-cost"></canvas></div>
       </div>
-
-      <!-- Cost per Email -->
       <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">Cost per 100 Emails</h2>
+        <h2 class="text-sm font-semibold text-gray-900">Est. Cost per 100 Emails</h2>
         <p class="text-xs text-gray-500 mb-3">Normalized cost per 100 emails — separates efficiency from volume</p>
         <div class="h-64"><canvas id="chart-cost-per-email"></canvas></div>
       </div>
-
-      <!-- Cumulative Cost & Savings -->
       <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">Cumulative Cost & Savings</h2>
+        <h2 class="text-sm font-semibold text-gray-900">Est. Cumulative Cost & Savings</h2>
         <p class="text-xs text-gray-500 mb-3">Actual cost vs what it would cost without patterns</p>
         <div class="h-64"><canvas id="chart-cumulative-cost"></canvas></div>
       </div>
     </div>
 
-    <!-- Row 4: Where to focus -->
+    <!-- Where to Focus -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- AI Dependency Heatmap -->
       <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">AI Dependency by Category</h2>
-        <p class="text-xs text-gray-500 mb-3">Weekly AI% per rule type — dark = still relying on AI, light = pattern-learned</p>
-        <div class="h-72"><canvas id="chart-ai-heatmap"></canvas></div>
+        <h2 class="text-sm font-semibold text-gray-900">AI Calls by Rule Type</h2>
+        <p class="text-xs text-gray-500 mb-3">Where LLM budget is spent — target the biggest bars</p>
+        <div class="h-64"><canvas id="chart-by-rule-type"></canvas></div>
       </div>
-
-      <!-- Top AI-Heavy Senders -->
       <div class="bg-white border border-gray-200 rounded-xl p-5">
         <h2 class="text-sm font-semibold text-gray-900">Top AI-Heavy Domains</h2>
         <p class="text-xs text-gray-500 mb-3">Domains triggering the most AI calls — best candidates for new patterns</p>
@@ -255,16 +215,22 @@
       </div>
     </div>
 
-    <!-- Row 5 -->
+    <!-- Growth & Activity -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Activity by Account -->
+      <div class="bg-white border border-gray-200 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-gray-900">Pattern Growth</h2>
+        <p class="text-xs text-gray-500 mb-3">Cumulative learned patterns by source</p>
+        <div class="h-64"><canvas id="chart-pattern-growth"></canvas></div>
+      </div>
       <div class="bg-white border border-gray-200 rounded-xl p-5">
         <h2 class="text-sm font-semibold text-gray-900">Activity by Account</h2>
         <p class="text-xs text-gray-500 mb-3">Rules executed per email account per day</p>
         <div class="h-64"><canvas id="chart-by-account"></canvas></div>
       </div>
+    </div>
 
-      <!-- Action distribution -->
+    <!-- Actions -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-white border border-gray-200 rounded-xl p-5">
         <h2 class="text-sm font-semibold text-gray-900">Action Distribution</h2>
         <p class="text-xs text-gray-500 mb-3">What automated actions are taken on emails</p>
@@ -332,59 +298,14 @@
       });
     }
 
-    // ── Chart 1: LLM Calls Avoided % (with 7-day rolling avg) ──
-    async function renderEfficiency(data) {
-      destroyChart('efficiency');
-      const days = data.map(r => r.day);
+    // ── Summary card updates from efficiency data ──
+    function updateEfficiencyCards(data) {
       const pcts = data.map(r => {
         const avoided = (r.pattern_matches || 0) + (r.preset_matches || 0);
         return r.total ? Math.round(avoided * 1000 / r.total) / 10 : 0;
       });
       const rolling7d = rollingAvg(pcts, 7);
 
-      charts.efficiency = new Chart(document.getElementById('chart-efficiency'), {
-        type: 'line',
-        data: {
-          labels: days,
-          datasets: [
-            {
-              label: 'Daily',
-              data: pcts,
-              borderColor: C.success500,
-              backgroundColor: 'rgba(18,183,106,0.06)',
-              fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: C.success500,
-              borderWidth: 1.5,
-            },
-            {
-              label: '7-day avg',
-              data: rolling7d,
-              borderColor: C.brand600,
-              backgroundColor: 'transparent',
-              tension: 0.4, pointRadius: 0, borderWidth: 2.5,
-              borderDash: [],
-            },
-          ],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
-            legend: { display: true },
-            tooltip: { callbacks: {
-              label: ctx => {
-                const val = ctx.parsed.y.toFixed(1);
-                return ctx.datasetIndex === 0 ? `Daily: ${val}%` : `7d avg: ${val}%`;
-              }
-            }},
-          },
-          scales: {
-            x: { grid: noGrid },
-            y: { grid: gridOpts, min: 0, max: 100,
-                 ticks: { callback: v => v + '%' } },
-          },
-        },
-      });
-
-      // Update cards
       const today = new Date().toISOString().slice(0, 10);
       const todayRow = data.find(r => r.day === today);
       const todayPct = todayRow ? Math.round(((todayRow.pattern_matches || 0) + (todayRow.preset_matches || 0)) * 1000 / (todayRow.total || 1)) / 10 : 0;
@@ -393,7 +314,6 @@
       document.getElementById('card-ai-today').textContent = todayRow?.ai_calls ?? '0';
       document.getElementById('card-pattern-today').textContent = (todayRow?.pattern_matches ?? 0) + (todayRow?.preset_matches ?? 0);
 
-      // Trend arrow (daily)
       if (data.length >= 2) {
         const prev = data[data.length - 2];
         const prevPct = prev.total ? Math.round(((prev.pattern_matches || 0) + (prev.preset_matches || 0)) * 1000 / prev.total) / 10 : 0;
@@ -404,12 +324,11 @@
         document.getElementById('card-match-trend').textContent = `${arrow} ${Math.abs(delta).toFixed(1)}pp vs yesterday`;
       }
 
-      // 7-day rolling average card
       if (rolling7d.length > 0) {
         const current7d = rolling7d[rolling7d.length - 1];
         document.getElementById('card-7d-rate').textContent = current7d.toFixed(1) + '%';
         if (rolling7d.length >= 8) {
-          const prev7d = rolling7d[rolling7d.length - 8]; // 7 days ago
+          const prev7d = rolling7d[rolling7d.length - 8];
           const delta7d = current7d - prev7d;
           const arrow = delta7d >= 0 ? '↑' : '↓';
           const color = delta7d >= 0 ? 'text-success-700' : 'text-error-700';
@@ -974,7 +893,7 @@
 
       const labels = [...noiseRows.map(r => r.system_type), ...signalRows.map(r => r.system_type)];
       const data = [...noiseRows.map(r => r.cnt), ...signalRows.map(r => r.cnt)];
-      const noiseColors = { MARKETING: '#98A2B3', NEWSLETTER: '#D0D5DD', COLD_EMAIL: '#F04438', NOTIFICATION: '#F79009' };
+      const noiseColors = { MARKETING: '#98A2B3', NEWSLETTER: '#D0D5DD', COLD_EMAIL: '#667085', NOTIFICATION: '#F79009' };
       const signalColors = { TO_REPLY: '#7A5AF8', FYI: '#0BA5EC', CALENDAR: '#12B76A', RECEIPT: '#EE46BC',
                             ACTIONED: '#6938EF', AWAITING_REPLY: '#5925DC', CUSTOM: '#BDB4FE' };
       const allColors = { ...noiseColors, ...signalColors };
@@ -991,106 +910,6 @@
           cutout: '60%',
           plugins: {
             legend: { position: 'right', labels: { padding: 8, font: { size: 10 } } },
-          },
-        },
-      });
-    }
-
-    // ── Chart: AI Dependency Heatmap ──
-    async function renderAiHeatmap() {
-      const rows = await fetchData('ai-calls-by-type');
-      destroyChart('aiHeatmap');
-      if (!rows.length) return;
-
-      // Group into weeks and rule types
-      const getWeek = (dateStr) => {
-        const d = new Date(dateStr);
-        const day = d.getDay();
-        d.setDate(d.getDate() - day); // start of week (Sunday)
-        return d.toISOString().slice(0, 10);
-      };
-
-      const weekMap = {}; // week -> type -> { ai, total }
-      const allTypes = new Set();
-
-      for (const r of rows) {
-        const week = getWeek(r.day);
-        if (!weekMap[week]) weekMap[week] = {};
-        if (!weekMap[week][r.system_type]) weekMap[week][r.system_type] = { ai: 0, total: 0 };
-        weekMap[week][r.system_type].total += r.cnt;
-        if (r.match_type === 'AI') weekMap[week][r.system_type].ai += r.cnt;
-        allTypes.add(r.system_type);
-      }
-
-      const weeks = Object.keys(weekMap).sort();
-      const types = [...allTypes].sort();
-
-      // Build matrix data for Chart.js scatter/bubble
-      const matrixData = [];
-      for (let wi = 0; wi < weeks.length; wi++) {
-        for (let ti = 0; ti < types.length; ti++) {
-          const entry = weekMap[weeks[wi]]?.[types[ti]];
-          if (entry && entry.total > 0) {
-            const aiPct = Math.round(entry.ai * 100 / entry.total);
-            matrixData.push({ x: wi, y: ti, v: aiPct, total: entry.total, ai: entry.ai });
-          }
-        }
-      }
-
-      // Use bubble chart to simulate heatmap
-      charts.aiHeatmap = new Chart(document.getElementById('chart-ai-heatmap'), {
-        type: 'bubble',
-        data: {
-          datasets: [{
-            data: matrixData.map(d => ({
-              x: d.x, y: d.y,
-              r: Math.min(18, Math.max(6, Math.sqrt(d.total) * 2.5)),
-            })),
-            backgroundColor: matrixData.map(d => {
-              // Red (high AI%) -> Green (low AI%)
-              const pct = d.v / 100;
-              if (pct > 0.7) return 'rgba(240,68,56,0.8)';
-              if (pct > 0.4) return 'rgba(247,144,9,0.8)';
-              if (pct > 0.15) return 'rgba(247,144,9,0.4)';
-              return 'rgba(18,183,106,0.7)';
-            }),
-            borderWidth: 0,
-          }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: ctx => {
-                  const d = matrixData[ctx.dataIndex];
-                  return [
-                    `${types[d.y]}: ${d.v}% AI`,
-                    `${d.ai} AI / ${d.total} total`,
-                    `Week of ${weeks[d.x]}`
-                  ];
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              grid: noGrid, min: -0.5, max: weeks.length - 0.5,
-              ticks: {
-                callback: (v) => weeks[v] ? weeks[v].slice(5) : '',
-                stepSize: 1,
-              },
-              title: { display: false },
-            },
-            y: {
-              grid: { color: '#F2F4F7' }, min: -0.5, max: types.length - 0.5,
-              ticks: {
-                callback: (v) => types[v] || '',
-                stepSize: 1,
-              },
-              title: { display: false },
-            },
           },
         },
       });
@@ -1245,11 +1064,11 @@
       dot.className = 'inline-block w-2 h-2 rounded-full bg-warning-500 animate-pulse';
 
       try {
-        // Efficiency data is shared between chart 1 and 2
+        // Efficiency data is shared between cards and AI vs Pattern chart
         const effData = await fetchData('llm-efficiency');
+        updateEfficiencyCards(effData);
 
         await Promise.all([
-          renderEfficiency(effData),
           renderAiVsPattern(effData),
           renderRedisUsage(),
           renderTierMigration(),
@@ -1258,7 +1077,6 @@
           renderPatternGrowth(),
           renderByRuleType(),
           renderCostCharts(),
-          renderAiHeatmap(),
           renderTopSenders(),
           renderByAccount(),
           renderActions(),

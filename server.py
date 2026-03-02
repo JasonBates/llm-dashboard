@@ -257,8 +257,8 @@ QUERY_DEFS = {
             ORDER BY 2 DESC
             LIMIT 15
         """,
-        "has_account_join": False,
-        "date_col": None,
+        "has_account_join": True,
+        "date_col": 'er."createdAt"',
     },
 }
 
