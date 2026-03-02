@@ -1,6 +1,6 @@
 # Inbox Zero LLM Dashboard
 
-A lightweight dashboard for tracking AI and automation metrics from a self-hosted [Inbox Zero](https://github.com/elie222/inbox-zero) instance. It queries your PostgreSQL database and Redis directly to visualize how effectively pattern learning is reducing LLM calls over time.
+A lightweight dashboard for tracking AI and automation metrics from a self-hosted [Inbox Zero](https://github.com/elie222/inbox-zero) instance. It queries your PostgreSQL database and Redis directly to visualize how effectively pattern learning is reducing LLM calls over time for all accounts.
 
 ![Dashboard](dashboard.png)
 
