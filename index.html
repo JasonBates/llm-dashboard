@@ -201,12 +201,17 @@
       </div>
     </div>
 
-    <!-- Where to Focus -->
+    <!-- Where to Focus + Actions -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-white border border-gray-200 rounded-xl p-5">
         <h2 class="text-sm font-semibold text-gray-900">AI Calls by Rule Type</h2>
         <p class="text-xs text-gray-500 mb-3">Where LLM budget is spent — target the biggest bars</p>
         <div class="h-64"><canvas id="chart-by-rule-type"></canvas></div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-gray-900">Action Distribution</h2>
+        <p class="text-xs text-gray-500 mb-3">What automated actions are taken on emails</p>
+        <div class="h-64"><canvas id="chart-actions"></canvas></div>
       </div>
     </div>
 
@@ -221,15 +226,6 @@
         <h2 class="text-sm font-semibold text-gray-900">Activity by Account</h2>
         <p class="text-xs text-gray-500 mb-3">Rules executed per email account per day</p>
         <div class="h-64"><canvas id="chart-by-account"></canvas></div>
-      </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-gray-900">Action Distribution</h2>
-        <p class="text-xs text-gray-500 mb-3">What automated actions are taken on emails</p>
-        <div class="h-56"><canvas id="chart-actions"></canvas></div>
       </div>
     </div>
 
