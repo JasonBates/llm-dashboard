@@ -233,6 +233,33 @@ QUERY_DEFS = {
         "has_account_join": True,
         "date_col": 'er."createdAt"',
     },
+    "top-ai-senders": {
+        "sql": """
+            SELECT domain, sum(ai_calls)::int AS ai_calls,
+                   sum(pattern_matches)::int AS pattern_matches, sum(total)::int AS total
+            FROM (
+                SELECT DISTINCT ON (er.id)
+                  COALESCE(em."fromDomain", 'unknown') AS domain,
+                  CASE WHEN er."matchMetadata"::text LIKE '%%AI%%'
+                       AND er."matchMetadata"::text NOT LIKE '%%LEARNED_PATTERN%%'
+                       THEN 1 ELSE 0 END AS ai_calls,
+                  CASE WHEN er."matchMetadata"::text LIKE '%%LEARNED_PATTERN%%'
+                       THEN 1 ELSE 0 END AS pattern_matches,
+                  1 AS total,
+                  ea.email AS account_email
+                FROM "ExecutedRule" er
+                JOIN "EmailAccount" ea ON er."emailAccountId" = ea.id
+                LEFT JOIN "EmailMessage" em ON er."emailAccountId" = em."emailAccountId"
+                    AND (er."messageId" = em."messageId" OR er."threadId" = em."threadId")
+                ORDER BY er.id, (em."messageId" = er."messageId") DESC NULLS LAST
+            ) sub
+            GROUP BY 1
+            ORDER BY 2 DESC
+            LIMIT 15
+        """,
+        "has_account_join": False,
+        "date_col": None,
+    },
 }
 
 

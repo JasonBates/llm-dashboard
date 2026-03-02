@@ -75,7 +75,7 @@
   <main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
       <div class="bg-white border border-gray-200 rounded-xl p-4">
         <p class="text-xs font-medium text-gray-500">Noise Rate</p>
         <p class="text-2xl font-semibold mt-1" id="card-noise-rate">—</p>
@@ -103,6 +103,16 @@
         <p class="text-xs font-medium text-gray-500">Est. Cost Today</p>
         <p class="text-2xl font-semibold mt-1" id="card-cost-today">—</p>
         <p class="text-xs text-gray-400 mt-0.5" id="card-cost-saved"></p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs font-medium text-gray-500">Cost / 100 Emails</p>
+        <p class="text-2xl font-semibold mt-1" id="card-cost-per-email">—</p>
+        <p class="text-xs text-gray-400 mt-0.5" id="card-cost-per-email-trend"></p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs font-medium text-gray-500">7d Match Rate</p>
+        <p class="text-2xl font-semibold mt-1" id="card-7d-rate">—</p>
+        <p class="text-xs mt-0.5" id="card-7d-trend"></p>
       </div>
     </div>
 
@@ -203,14 +213,21 @@
       </div>
     </div>
 
-    <!-- Row 3 -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Row 3: Cost -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
       <!-- Estimated Daily Cost -->
       <div class="bg-white border border-gray-200 rounded-xl p-5">
         <h2 class="text-sm font-semibold text-gray-900">Estimated Daily Cost</h2>
         <p class="text-xs text-gray-500 mb-3">~$0.014/call avg (Sonnet). Pattern matches = free</p>
         <div class="h-64"><canvas id="chart-daily-cost"></canvas></div>
+      </div>
+
+      <!-- Cost per Email -->
+      <div class="bg-white border border-gray-200 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-gray-900">Cost per 100 Emails</h2>
+        <p class="text-xs text-gray-500 mb-3">Normalized cost per 100 emails — separates efficiency from volume</p>
+        <div class="h-64"><canvas id="chart-cost-per-email"></canvas></div>
       </div>
 
       <!-- Cumulative Cost & Savings -->
@@ -221,7 +238,24 @@
       </div>
     </div>
 
-    <!-- Row 4 -->
+    <!-- Row 4: Where to focus -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- AI Dependency Heatmap -->
+      <div class="bg-white border border-gray-200 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-gray-900">AI Dependency by Category</h2>
+        <p class="text-xs text-gray-500 mb-3">Weekly AI% per rule type — dark = still relying on AI, light = pattern-learned</p>
+        <div class="h-72"><canvas id="chart-ai-heatmap"></canvas></div>
+      </div>
+
+      <!-- Top AI-Heavy Senders -->
+      <div class="bg-white border border-gray-200 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-gray-900">Top AI-Heavy Domains</h2>
+        <p class="text-xs text-gray-500 mb-3">Domains triggering the most AI calls — best candidates for new patterns</p>
+        <div class="h-72"><canvas id="chart-top-senders"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Row 5 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Activity by Account -->
       <div class="bg-white border border-gray-200 rounded-xl p-5">
@@ -289,7 +323,16 @@
 
     function destroyChart(key) { if (charts[key]) { charts[key].destroy(); delete charts[key]; } }
 
-    // ── Chart 1: LLM Calls Avoided % ──
+    // ── Helpers: Rolling average ──
+    function rollingAvg(arr, window) {
+      return arr.map((_, i) => {
+        const start = Math.max(0, i - window + 1);
+        const slice = arr.slice(start, i + 1);
+        return slice.reduce((s, v) => s + v, 0) / slice.length;
+      });
+    }
+
+    // ── Chart 1: LLM Calls Avoided % (with 7-day rolling avg) ──
     async function renderEfficiency(data) {
       destroyChart('efficiency');
       const days = data.map(r => r.day);
@@ -297,25 +340,41 @@
         const avoided = (r.pattern_matches || 0) + (r.preset_matches || 0);
         return r.total ? Math.round(avoided * 1000 / r.total) / 10 : 0;
       });
+      const rolling7d = rollingAvg(pcts, 7);
 
       charts.efficiency = new Chart(document.getElementById('chart-efficiency'), {
         type: 'line',
         data: {
           labels: days,
-          datasets: [{
-            label: '% Avoided',
-            data: pcts,
-            borderColor: C.success500,
-            backgroundColor: 'rgba(18,183,106,0.08)',
-            fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: C.success500,
-            borderWidth: 2.5,
-          }],
+          datasets: [
+            {
+              label: 'Daily',
+              data: pcts,
+              borderColor: C.success500,
+              backgroundColor: 'rgba(18,183,106,0.06)',
+              fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: C.success500,
+              borderWidth: 1.5,
+            },
+            {
+              label: '7-day avg',
+              data: rolling7d,
+              borderColor: C.brand600,
+              backgroundColor: 'transparent',
+              tension: 0.4, pointRadius: 0, borderWidth: 2.5,
+              borderDash: [],
+            },
+          ],
         },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: ctx => `${ctx.parsed.y}% pattern matched` } },
+            legend: { display: true },
+            tooltip: { callbacks: {
+              label: ctx => {
+                const val = ctx.parsed.y.toFixed(1);
+                return ctx.datasetIndex === 0 ? `Daily: ${val}%` : `7d avg: ${val}%`;
+              }
+            }},
           },
           scales: {
             x: { grid: noGrid },
@@ -334,7 +393,7 @@
       document.getElementById('card-ai-today').textContent = todayRow?.ai_calls ?? '0';
       document.getElementById('card-pattern-today').textContent = (todayRow?.pattern_matches ?? 0) + (todayRow?.preset_matches ?? 0);
 
-      // Trend arrow
+      // Trend arrow (daily)
       if (data.length >= 2) {
         const prev = data[data.length - 2];
         const prevPct = prev.total ? Math.round(((prev.pattern_matches || 0) + (prev.preset_matches || 0)) * 1000 / prev.total) / 10 : 0;
@@ -343,6 +402,20 @@
         const color = delta >= 0 ? 'text-success-700' : 'text-error-700';
         document.getElementById('card-match-trend').className = `text-xs mt-0.5 ${color}`;
         document.getElementById('card-match-trend').textContent = `${arrow} ${Math.abs(delta).toFixed(1)}pp vs yesterday`;
+      }
+
+      // 7-day rolling average card
+      if (rolling7d.length > 0) {
+        const current7d = rolling7d[rolling7d.length - 1];
+        document.getElementById('card-7d-rate').textContent = current7d.toFixed(1) + '%';
+        if (rolling7d.length >= 8) {
+          const prev7d = rolling7d[rolling7d.length - 8]; // 7 days ago
+          const delta7d = current7d - prev7d;
+          const arrow = delta7d >= 0 ? '↑' : '↓';
+          const color = delta7d >= 0 ? 'text-success-700' : 'text-error-700';
+          document.getElementById('card-7d-trend').className = `text-xs mt-0.5 ${color}`;
+          document.getElementById('card-7d-trend').textContent = `${arrow} ${Math.abs(delta7d).toFixed(1)}pp vs last week`;
+        }
       }
     }
 
@@ -682,6 +755,7 @@
       const rows = await fetchData('estimated-cost');
       destroyChart('dailyCost');
       destroyChart('cumulativeCost');
+      destroyChart('costPerEmail');
 
       const days = rows.map(r => r.day);
       const dailyActual = rows.map(r => (r.ai_calls || 0) * COST_PER_CALL);
@@ -724,6 +798,65 @@
           },
         },
       });
+
+      // Cost per 100 emails line chart
+      const costPer1K = rows.map(r => {
+        if (!r.total) return 0;
+        return Math.round((r.ai_calls || 0) * COST_PER_CALL * 100 / r.total * 100) / 100;
+      });
+      const costPer1KRolling = rollingAvg(costPer1K, 7);
+
+      charts.costPerEmail = new Chart(document.getElementById('chart-cost-per-email'), {
+        type: 'line',
+        data: {
+          labels: days,
+          datasets: [
+            {
+              label: 'Daily',
+              data: costPer1K,
+              borderColor: C.warning500,
+              backgroundColor: 'rgba(247,144,9,0.06)',
+              fill: true, tension: 0.3, pointRadius: 3, borderWidth: 1.5,
+            },
+            {
+              label: '7-day avg',
+              data: costPer1KRolling,
+              borderColor: C.error500,
+              backgroundColor: 'transparent',
+              tension: 0.4, pointRadius: 0, borderWidth: 2.5,
+            },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)} / 100 emails`
+              }
+            }
+          },
+          scales: {
+            x: { grid: noGrid },
+            y: { grid: gridOpts, beginAtZero: true,
+                 ticks: { callback: v => '$' + v.toFixed(2) } },
+          },
+        },
+      });
+
+      // Update cost-per-100 card
+      if (costPer1K.length > 0) {
+        const latest = costPer1K[costPer1K.length - 1];
+        document.getElementById('card-cost-per-email').textContent = '$' + latest.toFixed(2);
+        if (costPer1K.length >= 2) {
+          const prev = costPer1K[costPer1K.length - 2];
+          const delta = latest - prev;
+          const arrow = delta <= 0 ? '↓' : '↑';
+          const color = delta <= 0 ? 'text-success-700' : 'text-error-700';
+          document.getElementById('card-cost-per-email-trend').className = `text-xs mt-0.5 ${color}`;
+          document.getElementById('card-cost-per-email-trend').textContent = `${arrow} $${Math.abs(delta).toFixed(2)} vs yesterday`;
+        }
+      }
 
       // Cumulative cost line chart
       let cumActual = 0, cumWithout = 0;
@@ -863,6 +996,158 @@
       });
     }
 
+    // ── Chart: AI Dependency Heatmap ──
+    async function renderAiHeatmap() {
+      const rows = await fetchData('ai-calls-by-type');
+      destroyChart('aiHeatmap');
+      if (!rows.length) return;
+
+      // Group into weeks and rule types
+      const getWeek = (dateStr) => {
+        const d = new Date(dateStr);
+        const day = d.getDay();
+        d.setDate(d.getDate() - day); // start of week (Sunday)
+        return d.toISOString().slice(0, 10);
+      };
+
+      const weekMap = {}; // week -> type -> { ai, total }
+      const allTypes = new Set();
+
+      for (const r of rows) {
+        const week = getWeek(r.day);
+        if (!weekMap[week]) weekMap[week] = {};
+        if (!weekMap[week][r.system_type]) weekMap[week][r.system_type] = { ai: 0, total: 0 };
+        weekMap[week][r.system_type].total += r.cnt;
+        if (r.match_type === 'AI') weekMap[week][r.system_type].ai += r.cnt;
+        allTypes.add(r.system_type);
+      }
+
+      const weeks = Object.keys(weekMap).sort();
+      const types = [...allTypes].sort();
+
+      // Build matrix data for Chart.js scatter/bubble
+      const matrixData = [];
+      for (let wi = 0; wi < weeks.length; wi++) {
+        for (let ti = 0; ti < types.length; ti++) {
+          const entry = weekMap[weeks[wi]]?.[types[ti]];
+          if (entry && entry.total > 0) {
+            const aiPct = Math.round(entry.ai * 100 / entry.total);
+            matrixData.push({ x: wi, y: ti, v: aiPct, total: entry.total, ai: entry.ai });
+          }
+        }
+      }
+
+      // Use bubble chart to simulate heatmap
+      charts.aiHeatmap = new Chart(document.getElementById('chart-ai-heatmap'), {
+        type: 'bubble',
+        data: {
+          datasets: [{
+            data: matrixData.map(d => ({
+              x: d.x, y: d.y,
+              r: Math.min(18, Math.max(6, Math.sqrt(d.total) * 2.5)),
+            })),
+            backgroundColor: matrixData.map(d => {
+              // Red (high AI%) -> Green (low AI%)
+              const pct = d.v / 100;
+              if (pct > 0.7) return 'rgba(240,68,56,0.8)';
+              if (pct > 0.4) return 'rgba(247,144,9,0.8)';
+              if (pct > 0.15) return 'rgba(247,144,9,0.4)';
+              return 'rgba(18,183,106,0.7)';
+            }),
+            borderWidth: 0,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const d = matrixData[ctx.dataIndex];
+                  return [
+                    `${types[d.y]}: ${d.v}% AI`,
+                    `${d.ai} AI / ${d.total} total`,
+                    `Week of ${weeks[d.x]}`
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: noGrid, min: -0.5, max: weeks.length - 0.5,
+              ticks: {
+                callback: (v) => weeks[v] ? weeks[v].slice(5) : '',
+                stepSize: 1,
+              },
+              title: { display: false },
+            },
+            y: {
+              grid: { color: '#F2F4F7' }, min: -0.5, max: types.length - 0.5,
+              ticks: {
+                callback: (v) => types[v] || '',
+                stepSize: 1,
+              },
+              title: { display: false },
+            },
+          },
+        },
+      });
+    }
+
+    // ── Chart: Top AI-Heavy Domains ──
+    async function renderTopSenders() {
+      const rows = await fetchData('top-ai-senders');
+      destroyChart('topSenders');
+      if (!rows.length) return;
+
+      // Filter out unknowns and take top 10 by AI calls
+      const filtered = rows
+        .filter(r => r.domain !== 'unknown' && r.ai_calls > 0)
+        .slice(0, 10);
+
+      if (!filtered.length) return;
+
+      charts.topSenders = new Chart(document.getElementById('chart-top-senders'), {
+        type: 'bar',
+        data: {
+          labels: filtered.map(r => r.domain),
+          datasets: [
+            {
+              label: 'AI Calls',
+              data: filtered.map(r => r.ai_calls),
+              backgroundColor: C.error500, borderRadius: 2,
+            },
+            {
+              label: 'Pattern',
+              data: filtered.map(r => r.pattern_matches),
+              backgroundColor: C.success500, borderRadius: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          indexAxis: 'y',
+          scales: {
+            x: { stacked: true, grid: gridOpts },
+            y: { stacked: true, grid: noGrid },
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                afterBody: (items) => {
+                  const r = filtered[items[0].dataIndex];
+                  const patternPct = r.total ? Math.round(r.pattern_matches * 100 / r.total) : 0;
+                  return `${patternPct}% pattern coverage`;
+                }
+              }
+            }
+          },
+        },
+      });
+    }
+
     // ── Chart 6: Activity by Account ──
     async function renderByAccount() {
       const rows = await fetchData('rules-by-account');
@@ -973,6 +1258,8 @@
           renderPatternGrowth(),
           renderByRuleType(),
           renderCostCharts(),
+          renderAiHeatmap(),
+          renderTopSenders(),
           renderByAccount(),
           renderActions(),
         ]);
