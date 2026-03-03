@@ -185,9 +185,9 @@ QUERY_DEFS = {
             SELECT
               date_trunc('day', er."createdAt")::date AS day,
               count(*) FILTER (WHERE COALESCE(r."systemType"::text, 'CUSTOM')
-                  IN ('MARKETING', 'NEWSLETTER', 'COLD_EMAIL', 'NOTIFICATION')) AS noise,
+                  IN ('MARKETING', 'COLD_EMAIL')) AS noise,
               count(*) FILTER (WHERE COALESCE(r."systemType"::text, 'CUSTOM')
-                  NOT IN ('MARKETING', 'NEWSLETTER', 'COLD_EMAIL', 'NOTIFICATION')) AS signal,
+                  NOT IN ('MARKETING', 'COLD_EMAIL')) AS signal,
               count(*) AS total
             FROM "ExecutedRule" er
             LEFT JOIN "Rule" r ON er."ruleId" = r.id
@@ -204,7 +204,7 @@ QUERY_DEFS = {
               COALESCE(r."systemType"::text, 'CUSTOM') AS system_type,
               CASE
                 WHEN COALESCE(r."systemType"::text, 'CUSTOM')
-                  IN ('MARKETING', 'NEWSLETTER', 'COLD_EMAIL', 'NOTIFICATION') THEN 'NOISE'
+                  IN ('MARKETING', 'COLD_EMAIL') THEN 'NOISE'
                 ELSE 'SIGNAL'
               END AS category,
               count(*) AS cnt
