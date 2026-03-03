@@ -75,16 +75,11 @@
   <main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-3">
       <div class="bg-white border border-gray-200 rounded-xl p-4">
         <p class="text-xs font-medium text-gray-500">Noise Rate</p>
         <p class="text-2xl font-semibold mt-1" id="card-noise-rate">—</p>
         <p class="text-xs text-gray-400 mt-0.5" id="card-noise-detail"></p>
-      </div>
-      <div class="bg-white border border-gray-200 rounded-xl p-4">
-        <p class="text-xs font-medium text-gray-500">Pattern Match Rate</p>
-        <p class="text-2xl font-semibold mt-1" id="card-match-rate">—</p>
-        <p class="text-xs mt-0.5" id="card-match-trend"></p>
       </div>
       <div class="bg-white border border-gray-200 rounded-xl p-4">
         <p class="text-xs font-medium text-gray-500">AI Calls Today</p>
@@ -95,9 +90,14 @@
         <p class="text-2xl font-semibold mt-1" id="card-pattern-today">—</p>
       </div>
       <div class="bg-white border border-gray-200 rounded-xl p-4">
-        <p class="text-xs font-medium text-gray-500">Total Patterns</p>
-        <p class="text-2xl font-semibold mt-1" id="card-patterns">—</p>
-        <p class="text-xs text-gray-400 mt-0.5" id="card-patterns-detail"></p>
+        <p class="text-xs font-medium text-gray-500">Pattern Match Rate</p>
+        <p class="text-2xl font-semibold mt-1" id="card-match-rate">—</p>
+        <p class="text-xs mt-0.5" id="card-match-trend"></p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs font-medium text-gray-500">7d Match Rate</p>
+        <p class="text-2xl font-semibold mt-1" id="card-7d-rate">—</p>
+        <p class="text-xs mt-0.5" id="card-7d-trend"></p>
       </div>
       <div class="bg-white border border-gray-200 rounded-xl p-4">
         <p class="text-xs font-medium text-gray-500">Est. Cost Today</p>
@@ -105,14 +105,19 @@
         <p class="text-xs text-gray-400 mt-0.5" id="card-cost-saved"></p>
       </div>
       <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs font-medium text-gray-500">Avg Cost/Day</p>
+        <p class="text-2xl font-semibold mt-1" id="card-avg-cost-day">—</p>
+        <p class="text-xs text-gray-400 mt-0.5" id="card-avg-cost-detail"></p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
         <p class="text-xs font-medium text-gray-500">Cost / 100 Emails</p>
         <p class="text-2xl font-semibold mt-1" id="card-cost-per-email">—</p>
         <p class="text-xs text-gray-400 mt-0.5" id="card-cost-per-email-trend"></p>
       </div>
       <div class="bg-white border border-gray-200 rounded-xl p-4">
-        <p class="text-xs font-medium text-gray-500">7d Match Rate</p>
-        <p class="text-2xl font-semibold mt-1" id="card-7d-rate">—</p>
-        <p class="text-xs mt-0.5" id="card-7d-trend"></p>
+        <p class="text-xs font-medium text-gray-500">Total Patterns</p>
+        <p class="text-2xl font-semibold mt-1" id="card-patterns">—</p>
+        <p class="text-xs text-gray-400 mt-0.5" id="card-patterns-detail"></p>
       </div>
     </div>
 
@@ -120,7 +125,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="bg-white border border-gray-200 rounded-xl p-5 lg:col-span-2">
         <h2 class="text-sm font-semibold text-gray-900">Signal vs Noise</h2>
-        <p class="text-xs text-gray-500 mb-3">How much of your email is noise (marketing, newsletters, cold email, notifications) vs signal</p>
+        <p class="text-xs text-gray-500 mb-3">How much of your email is noise (marketing, cold email) vs signal</p>
         <div class="h-64"><canvas id="chart-signal-noise"></canvas></div>
       </div>
       <div class="bg-white border border-gray-200 rounded-xl p-5">
@@ -159,8 +164,9 @@
               <th class="pb-2 pr-4 text-right">Cached</th>
               <th class="pb-2 pr-4 text-right">Cache %</th>
               <th class="pb-2 pr-4 text-right">Reasoning</th>
-              <th class="pb-2 text-right">Cost</th>
-              <th class="pb-2 text-right">$/call</th>
+              <th class="pb-2 pr-4 text-right">Cost</th>
+              <th class="pb-2 pr-4 text-right">$/call</th>
+              <th class="pb-2 text-right">$/day</th>
             </tr>
           </thead>
           <tbody id="redis-usage-table"></tbody>
@@ -362,7 +368,7 @@
     }
 
     // ── Chart: Redis AI Usage ──
-    async function renderRedisUsage() {
+    async function renderRedisUsage(numDays) {
       const rows = await fetchData('redis-usage');
       destroyChart('redisCost');
       destroyChart('redisTokens');
@@ -473,6 +479,7 @@
       for (const r of rows) {
         const cachePct = r.inputTokens ? Math.round(r.cachedInputTokens * 100 / r.inputTokens) : 0;
         const perCall = r.openaiCalls ? (r.cost / r.openaiCalls).toFixed(4) : '—';
+        const perDay = numDays ? '$' + (r.cost / numDays).toFixed(2) : '—';
         html += `<tr class="border-b border-gray-100 text-gray-700">
           <td class="py-2 pr-4 font-medium">${r.email}</td>
           <td class="py-2 pr-4 text-right tabular-nums">${fmt(r.openaiCalls)}</td>
@@ -481,14 +488,16 @@
           <td class="py-2 pr-4 text-right tabular-nums">${fmtK(r.cachedInputTokens)}</td>
           <td class="py-2 pr-4 text-right tabular-nums">${cachePct}%</td>
           <td class="py-2 pr-4 text-right tabular-nums">${fmtK(r.reasoningTokens)}</td>
-          <td class="py-2 text-right tabular-nums font-semibold">$${r.cost.toFixed(2)}</td>
-          <td class="py-2 text-right tabular-nums text-gray-500">$${perCall}</td>
+          <td class="py-2 pr-4 text-right tabular-nums font-semibold">$${r.cost.toFixed(2)}</td>
+          <td class="py-2 pr-4 text-right tabular-nums text-gray-500">$${perCall}</td>
+          <td class="py-2 text-right tabular-nums text-gray-500">${perDay}</td>
         </tr>`;
       }
 
       // Totals row
       const totalCachePct = totalInput ? Math.round(totalCached * 100 / totalInput) : 0;
       const totalPerCall = totalCalls ? (totalCost / totalCalls).toFixed(4) : '—';
+      const totalPerDay = numDays ? '$' + (totalCost / numDays).toFixed(2) : '—';
       html += `<tr class="border-t-2 border-gray-300 font-semibold text-gray-900">
         <td class="py-2 pr-4">Total</td>
         <td class="py-2 pr-4 text-right tabular-nums">${fmt(totalCalls)}</td>
@@ -497,8 +506,9 @@
         <td class="py-2 pr-4 text-right tabular-nums">${fmtK(totalCached)}</td>
         <td class="py-2 pr-4 text-right tabular-nums">${totalCachePct}%</td>
         <td class="py-2 pr-4 text-right tabular-nums">${fmtK(totalReasoning)}</td>
-        <td class="py-2 text-right tabular-nums">$${totalCost.toFixed(2)}</td>
-        <td class="py-2 text-right tabular-nums text-gray-500">$${totalPerCall}</td>
+        <td class="py-2 pr-4 text-right tabular-nums">$${totalCost.toFixed(2)}</td>
+        <td class="py-2 pr-4 text-right tabular-nums text-gray-500">$${totalPerCall}</td>
+        <td class="py-2 text-right tabular-nums text-gray-500">${totalPerDay}</td>
       </tr>`;
 
       tbody.innerHTML = html;
@@ -817,6 +827,14 @@
         document.getElementById('card-cost-saved').textContent = `$${todaySaved.toFixed(3)} saved`;
         document.getElementById('card-cost-saved').className = 'text-xs text-success-700 mt-0.5';
       }
+
+      // Update avg cost/day card
+      if (rows.length > 0) {
+        const totalEstCost = dailyActual.reduce((s, v) => s + v, 0);
+        const avgCostDay = totalEstCost / rows.length;
+        document.getElementById('card-avg-cost-day').textContent = '$' + avgCostDay.toFixed(3);
+        document.getElementById('card-avg-cost-detail').textContent = `over ${rows.length} days`;
+      }
     }
 
     // ── Chart: Signal vs Noise (stacked area) ──
@@ -884,9 +902,9 @@
 
       const labels = [...noiseRows.map(r => r.system_type), ...signalRows.map(r => r.system_type)];
       const data = [...noiseRows.map(r => r.cnt), ...signalRows.map(r => r.cnt)];
-      const noiseColors = { MARKETING: '#98A2B3', NEWSLETTER: '#D0D5DD', COLD_EMAIL: '#667085', NOTIFICATION: '#F79009' };
+      const noiseColors = { MARKETING: '#98A2B3', COLD_EMAIL: '#667085' };
       const signalColors = { TO_REPLY: '#7A5AF8', FYI: '#0BA5EC', CALENDAR: '#12B76A', RECEIPT: '#EE46BC',
-                            ACTIONED: '#6938EF', AWAITING_REPLY: '#5925DC', CUSTOM: '#BDB4FE' };
+                            ACTIONED: '#6938EF', AWAITING_REPLY: '#5925DC', NOTIFICATION: '#F79009', NEWSLETTER: '#D0D5DD', CUSTOM: '#BDB4FE' };
       const allColors = { ...noiseColors, ...signalColors };
       const colors = labels.map(l => allColors[l] || C.gray400);
 
@@ -1006,10 +1024,11 @@
         // Efficiency data is shared between cards and AI vs Pattern chart
         const effData = await fetchData('llm-efficiency');
         updateEfficiencyCards(effData);
+        const numDays = new Set(effData.map(r => r.day)).size;
 
         await Promise.all([
           renderAiVsPattern(effData),
-          renderRedisUsage(),
+          renderRedisUsage(numDays),
           renderTierMigration(),
           renderSignalNoise(),
           renderNoiseDetail(),
