@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent template for daily Postgres backups of the self-hosted
+  inbox-zero database (running in the inbox-zero-services-db-1 container).
+
+  Install:
+    cp scripts/com.jasonbates.inbox-zero-backup.plist.template \
+       ~/Library/LaunchAgents/com.jasonbates.inbox-zero-backup.plist
+    launchctl load ~/Library/LaunchAgents/com.jasonbates.inbox-zero-backup.plist
+
+  Verify scheduled:
+    launchctl list | grep inbox-zero-backup
+
+  Manual fire:
+    launchctl start com.jasonbates.inbox-zero-backup
+
+  Logs:
+    tail -f /tmp/inbox-zero-backup.log
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.jasonbates.inbox-zero-backup.plist
+    rm ~/Library/LaunchAgents/com.jasonbates.inbox-zero-backup.plist
+
+  Schedule: 04:30 local time, daily (offset from alix-backup at 04:00). If the
+  machine is asleep at 04:30, launchd fires the job as soon as the machine
+  wakes (StartCalendarInterval semantics), so we don't lose backups overnight.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jasonbates.inbox-zero-backup</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/jasonbates/Code/repos/llm-dashboard/scripts/backup-postgres.sh</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>4</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/inbox-zero-backup.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/inbox-zero-backup.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
