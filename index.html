@@ -375,8 +375,8 @@
 
       if (!rows.length) return;
 
-      const labels = rows.map(r => r.email.split('@')[0] + '@' + r.email.split('@')[1]);
-      const shortLabels = rows.map(r => r.email.split('@')[1]);
+      const labels = rows.map(r => r.email);
+      const shortLabels = rows.map(r => r.email.includes('@') ? r.email.split('@')[1] : r.email);
 
       // Cost horizontal bar chart
       charts.redisCost = new Chart(document.getElementById('chart-redis-cost'), {

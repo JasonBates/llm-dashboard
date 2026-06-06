@@ -263,31 +263,131 @@ QUERY_DEFS = {
 }
 
 
+# Maps raw Redis usage-hash field names to the normalized keys the frontend reads.
+USAGE_FIELD_MAP = {
+    "openaiCalls": "openaiCalls",
+    "openaiTokensUsed": "totalTokens",
+    "openaiCompletionTokensUsed": "outputTokens",
+    "openaiPromptTokensUsed": "inputTokens",
+    "cachedInputTokensUsed": "cachedInputTokens",
+    "reasoningTokensUsed": "reasoningTokens",
+    "cost": "cost",
+}
+USAGE_KEYS = tuple(USAGE_FIELD_MAP.values())
+
+
+def _load_account_lookups():
+    """Build id→email maps for EmailAccount and User from Postgres."""
+    conn = psycopg2.connect(DB_URL)
+    cur = conn.cursor()
+    cur.execute('SELECT id, email FROM "EmailAccount"')
+    email_accounts = {row[0]: row[1] for row in cur.fetchall()}
+    cur.execute('SELECT id, email FROM "User"')
+    users = {row[0]: row[1] for row in cur.fetchall()}
+    cur.close()
+    conn.close()
+    return email_accounts, users
+
+
+def _normalize_usage(data):
+    """Convert a raw Redis usage hash to the dashboard's normalized fields."""
+    data = data or {}
+    return {
+        key: (float(data.get(raw, 0) or 0) if key == "cost"
+              else int(data.get(raw, 0) or 0))
+        for raw, key in USAGE_FIELD_MAP.items()
+    }
+
+
+def _add_usage(into, other):
+    for key in USAGE_KEYS:
+        into[key] += other[key]
+
+
+def _parse_migration_snapshot(raw):
+    """Return the legacy usage snapshot from a migration done-state, or None."""
+    if not raw:
+        return None
+    try:
+        return json.loads(raw).get("usage")
+    except (ValueError, TypeError):
+        return None
+
+
+def _accumulate(by_email, email, usage):
+    entry = by_email.get(email)
+    if entry is None:
+        by_email[email] = dict(usage)
+    else:
+        _add_usage(entry, usage)
+
+
 def fetch_redis_usage():
-    """Fetch all usage:{email} hashes from Redis."""
+    """Fetch per-email-account AI usage from Redis, resolving stored IDs to emails.
+
+    inbox-zero writes usage under three key shapes:
+      usage:email-account:<id>  — current per-account usage
+      usage:user:<id>           — per-user rollup (sum across the user's accounts)
+      usage:<email>             — legacy per-account usage (pre-migration, frozen)
+
+    Resolution + merge mirrors inbox-zero's own getUsage so the totals match:
+      • email-account IDs resolve to their email via Postgres.
+      • Legacy email-keyed usage is combined into the same account. inbox-zero
+        lazily folds legacy usage into the email-account key on read and records a
+        `usage-migration:...:done` snapshot. So: if a done-state exists the legacy
+        total is already in the email-account key (add only any un-folded delta);
+        otherwise legacy and email-account usage are disjoint and must be summed.
+      • User rollup keys are skipped — they duplicate per-account totals and would
+        inflate this "per email account" view.
+    """
+    email_accounts, _users = _load_account_lookups()
+
     r = redis_lib.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-    results = []
+    ea_raw = {}      # email-account id -> raw usage hash
+    legacy_raw = {}  # email -> raw usage hash
     cursor = "0"
     while True:
         cursor, keys = r.scan(cursor=cursor, match="usage:*", count=200)
         for key in keys:
-            if key.startswith("usage-weekly-cost:"):
+            if key.startswith(("usage-weekly-cost:", "usage-migration:")):
                 continue
-            email = key[len("usage:"):]
-            data = r.hgetall(key)
-            results.append({
-                "email": email,
-                "openaiCalls": int(data.get("openaiCalls", 0)),
-                "totalTokens": int(data.get("openaiTokensUsed", 0)),
-                "outputTokens": int(data.get("openaiCompletionTokensUsed", 0)),
-                "inputTokens": int(data.get("openaiPromptTokensUsed", 0)),
-                "cachedInputTokens": int(data.get("cachedInputTokensUsed", 0)),
-                "reasoningTokens": int(data.get("reasoningTokensUsed", 0)),
-                "cost": float(data.get("cost", 0)),
-            })
+            subject = key[len("usage:"):]
+            if subject.startswith("user:"):
+                continue  # per-user rollup; duplicates the per-account rows
+            if subject.startswith("email-account:"):
+                ea_raw[subject[len("email-account:"):]] = r.hgetall(key)
+            else:
+                legacy_raw[subject] = r.hgetall(key)  # legacy usage:<email>
         if cursor == 0:
             break
+
+    by_email = {}
+    for account_id, raw in ea_raw.items():
+        email = email_accounts.get(account_id, f"email-account:{account_id}")
+        total = _normalize_usage(raw)
+        legacy = legacy_raw.pop(email, None)
+        if legacy is not None:
+            legacy_usage = _normalize_usage(legacy)
+            migrated = _parse_migration_snapshot(
+                r.get(f"usage-migration:usage-email-account:{account_id}:done")
+            )
+            if migrated is None:
+                _add_usage(total, legacy_usage)  # unmigrated: legacy + email-account
+            else:
+                snapshot = _normalize_usage(migrated)
+                _add_usage(total, {
+                    key: max(0, legacy_usage[key] - snapshot[key])
+                    for key in USAGE_KEYS
+                })  # migrated: only legacy not yet folded into the key
+        _accumulate(by_email, email, total)
+
+    # Legacy keys with no surviving email-account (e.g. a deleted account).
+    for email, raw in legacy_raw.items():
+        _accumulate(by_email, email, _normalize_usage(raw))
+
     r.close()
+
+    results = [{"email": email, **usage} for email, usage in by_email.items()]
     results.sort(key=lambda x: x["cost"], reverse=True)
     return results
 
